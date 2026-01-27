@@ -1,6 +1,8 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-@theme {
+:root {
   /* 큰 폰트 사이즈 */
   --font-size-base: 18px;
   --font-size-lg: 20px;
