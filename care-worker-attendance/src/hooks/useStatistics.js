@@ -20,8 +20,16 @@ export function useStatistics() {
     endOfWeek.setDate(startOfWeek.getDate() + 6);
     endOfWeek.setHours(23, 59, 59, 999);
 
-    const startDate = startOfWeek.toISOString().split('T')[0];
-    const endDate = endOfWeek.toISOString().split('T')[0];
+    // 타임존 문제 해결: toISOString 대신 로컬 날짜 사용
+    const formatDate = (date) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+
+    const startDate = formatDate(startOfWeek);
+    const endDate = formatDate(endOfWeek);
 
     const weekRecords = attendance.filter(
       (record) => record.date >= startDate && record.date <= endDate && record.checkOutTime
@@ -69,8 +77,16 @@ export function useStatistics() {
     const startOfMonth = new Date(year, month, 1);
     const endOfMonth = new Date(year, month + 1, 0);
 
-    const startDate = startOfMonth.toISOString().split('T')[0];
-    const endDate = endOfMonth.toISOString().split('T')[0];
+    // 타임존 문제 해결: toISOString 대신 로컬 날짜 사용
+    const formatDate = (date) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+
+    const startDate = formatDate(startOfMonth);
+    const endDate = formatDate(endOfMonth);
 
     const monthRecords = attendance.filter(
       (record) => record.date >= startDate && record.date <= endDate && record.checkOutTime
