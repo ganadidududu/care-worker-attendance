@@ -6,23 +6,18 @@ const AppContext = createContext();
 
 /**
  * 전역 상태 관리 Provider
- * 장소, 스케줄, 출퇴근 기록 데이터를 관리합니다
+ * 장소, 출퇴근 기록 데이터를 관리합니다
  */
 export const AppProvider = ({ children }) => {
   // 장소 데이터
   const [places, setPlaces] = useLocalStorage('care_places', []);
 
-  // 스케줄 데이터
-  const [schedules, setSchedules] = useLocalStorage('care_schedules', []);
-
-  // 출퇴근 기록 데이터
-  const [attendance, setAttendance] = useLocalStorage('care_attendance', []);
+  // 출퇴근 기록 데이터 (v2 - 달력 기반 시스템)
+  const [attendance, setAttendance] = useLocalStorage('care_attendance_v2', []);
 
   const value = {
     places,
     setPlaces,
-    schedules,
-    setSchedules,
     attendance,
     setAttendance,
   };

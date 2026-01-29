@@ -1,27 +1,29 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { usePlaces } from '../hooks/usePlaces';
-import { useSchedule } from '../hooks/useSchedule';
-import { useAttendance } from '../hooks/useAttendance';
+import { useCalendarAttendance } from '../hooks/useCalendarAttendance';
 import Card from '../components/common/Card';
 import Button from '../components/common/Button';
 
 /**
  * 홈 페이지 - 대시보드
- * 오늘 날짜, 시간, 오늘 일정 표시
+ * 오늘 날짜, 시간, 오늘 출근 정보 표시
  */
 export default function HomePage() {
   const { places } = usePlaces();
-  const { getTodaySchedules } = useSchedule();
-  const { getTodayRecords } = useAttendance();
+  const { getAttendanceByDate } = useCalendarAttendance();
   const [currentTime, setCurrentTime] = useState(new Date());
 
-  // 오늘 스케줄
-  const todaySchedules = getTodaySchedules(places);
-  const todayRecords = getTodayRecords();
+  // 오늘 날짜 (YYYY-MM-DD)
+  const formatDate = (date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
 
-  // 완료된 일정 개수
-  const completedCount = todayRecords.filter((r) => r.checkOutTime).length;
+  const todayStr = formatDate(new Date());
+  const todayAttendance = getAttendanceByDate(todayStr);
 
   // 시간 업데이트 (1초마다)
   useEffect(() => {
@@ -57,32 +59,36 @@ export default function HomePage() {
         </div>
       </Card>
 
-      {/* 오늘 일정 요약 */}
+      {/* 오늘 출근 정보 */}
       <Card className="mb-6 bg-blue-50">
-        <h2 className="text-2xl font-bold mb-4">오늘 일정</h2>
-        {todaySchedules.length === 0 ? (
-          <p className="text-lg text-gray-600">오늘은 등록된 일정이 없습니다</p>
+        <h2 className="text-2xl font-bold mb-4">오늘 근무</h2>
+        {!todayAttendance || !todayAttendance.worked ? (
+          <p className="text-lg text-gray-600">오늘은 출근 기록이 없습니다</p>
         ) : (
           <div className="space-y-3">
             <div className="flex justify-between items-center">
-              <span className="text-lg">총 방문 예정:</span>
-              <span className="text-3xl font-bold text-primary-600">
-                {todaySchedules.length}곳
+              <span className="text-lg">장소:</span>
+              <span className="text-xl font-bold text-gray-900">
+                {todayAttendance.place?.name || '(삭제된 장소)'}
               </span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-lg">완료:</span>
-              <span className="text-3xl font-bold text-green-600">
-                {completedCount}곳
+              <span className="text-lg">근무 시간:</span>
+              <span className="text-3xl font-bold text-primary-600">
+                {todayAttendance.hours}시간
               </span>
             </div>
-            <div className="pt-3 border-t space-y-2">
-              {todaySchedules.map((schedule) => (
-                <div key={schedule.id} className="text-base text-gray-700">
-                  • {schedule.place.name} ({schedule.startTime} -{' '}
-                  {schedule.endTime})
-                </div>
-              ))}
+            {todayAttendance.isHoliday && (
+              <div className="flex justify-between items-center">
+                <span className="text-lg text-red-600">공휴일 가산:</span>
+                <span className="text-xl font-bold text-red-600">1.5배</span>
+              </div>
+            )}
+            <div className="flex justify-between items-center pt-3 border-t">
+              <span className="text-xl font-bold">일급:</span>
+              <span className="text-3xl font-bold text-green-600">
+                {todayAttendance.dailyPay.toLocaleString()}원
+              </span>
             </div>
           </div>
         )}
@@ -90,14 +96,14 @@ export default function HomePage() {
 
       {/* 빠른 이동 버튼 */}
       <div className="grid grid-cols-2 gap-3 mb-6">
-        <Link to="/checklist">
+        <Link to="/calendar">
           <Button variant="success" fullWidth>
-            체크리스트
+            근무 달력
           </Button>
         </Link>
-        <Link to="/schedule">
+        <Link to="/statistics">
           <Button variant="primary" fullWidth>
-            스케줄 설정
+            통계 보기
           </Button>
         </Link>
       </div>

@@ -2,8 +2,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AppProvider } from './context/AppContext';
 import HomePage from './pages/HomePage';
 import PlacesPage from './pages/PlacesPage';
-import ChecklistPage from './pages/ChecklistPage';
-import SchedulePage from './pages/SchedulePage';
+import CalendarPage from './pages/CalendarPage';
 import StatisticsPage from './pages/StatisticsPage';
 import SettingsPage from './pages/SettingsPage';
 import BottomNav from './components/common/BottomNav';
@@ -19,9 +18,8 @@ export default function App() {
         <div className="min-h-screen bg-gray-50 pb-20">
           <Routes>
             <Route path="/" element={<HomePage />} />
-            <Route path="/checklist" element={<ChecklistPage />} />
+            <Route path="/calendar" element={<CalendarPage />} />
             <Route path="/places" element={<PlacesPage />} />
-            <Route path="/schedule" element={<SchedulePage />} />
             <Route path="/statistics" element={<StatisticsPage />} />
             <Route path="/settings" element={<SettingsPage />} />
           </Routes>

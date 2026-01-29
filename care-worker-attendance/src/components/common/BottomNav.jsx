@@ -9,7 +9,7 @@ export default function BottomNav() {
 
   const navItems = [
     { path: '/', label: '홈', icon: '🏠' },
-    { path: '/checklist', label: '체크', icon: '✅' },
+    { path: '/calendar', label: '달력', icon: '📅' },
     { path: '/statistics', label: '통계', icon: '📊' },
     { path: '/places', label: '장소', icon: '📍' },
     { path: '/settings', label: '설정', icon: '⚙️' },

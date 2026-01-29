@@ -32,11 +32,11 @@ export function useStatistics() {
     const endDate = formatDate(endOfWeek);
 
     const weekRecords = attendance.filter(
-      (record) => record.date >= startDate && record.date <= endDate && record.checkOutTime
+      (record) => record.date >= startDate && record.date <= endDate && record.worked
     );
 
-    const totalHours = weekRecords.reduce((sum, r) => sum + r.workHours, 0);
-    const totalPay = weekRecords.reduce((sum, r) => sum + r.calculatedPay, 0);
+    const totalHours = weekRecords.reduce((sum, r) => sum + r.hours, 0);
+    const totalPay = weekRecords.reduce((sum, r) => sum + r.dailyPay, 0);
 
     // 장소별 통계
     const byPlace = weekRecords.reduce((acc, record) => {
@@ -50,8 +50,8 @@ export function useStatistics() {
           visits: 0,
         };
       }
-      acc[placeId].hours += record.workHours;
-      acc[placeId].pay += record.calculatedPay;
+      acc[placeId].hours += record.hours;
+      acc[placeId].pay += record.dailyPay;
       acc[placeId].visits += 1;
       return acc;
     }, {});
@@ -89,11 +89,11 @@ export function useStatistics() {
     const endDate = formatDate(endOfMonth);
 
     const monthRecords = attendance.filter(
-      (record) => record.date >= startDate && record.date <= endDate && record.checkOutTime
+      (record) => record.date >= startDate && record.date <= endDate && record.worked
     );
 
-    const totalHours = monthRecords.reduce((sum, r) => sum + r.workHours, 0);
-    const totalPay = monthRecords.reduce((sum, r) => sum + r.calculatedPay, 0);
+    const totalHours = monthRecords.reduce((sum, r) => sum + r.hours, 0);
+    const totalPay = monthRecords.reduce((sum, r) => sum + r.dailyPay, 0);
 
     // 장소별 통계
     const byPlace = monthRecords.reduce((acc, record) => {
@@ -107,8 +107,8 @@ export function useStatistics() {
           visits: 0,
         };
       }
-      acc[placeId].hours += record.workHours;
-      acc[placeId].pay += record.calculatedPay;
+      acc[placeId].hours += record.hours;
+      acc[placeId].pay += record.dailyPay;
       acc[placeId].visits += 1;
       return acc;
     }, {});
@@ -124,8 +124,8 @@ export function useStatistics() {
           visits: 0,
         };
       }
-      acc[day].hours += record.workHours;
-      acc[day].pay += record.calculatedPay;
+      acc[day].hours += record.hours;
+      acc[day].pay += record.dailyPay;
       acc[day].visits += 1;
       return acc;
     }, {});
@@ -148,11 +148,11 @@ export function useStatistics() {
    */
   const calculateRangeStats = (startDate, endDate) => {
     const rangeRecords = attendance.filter(
-      (record) => record.date >= startDate && record.date <= endDate && record.checkOutTime
+      (record) => record.date >= startDate && record.date <= endDate && record.worked
     );
 
-    const totalHours = rangeRecords.reduce((sum, r) => sum + r.workHours, 0);
-    const totalPay = rangeRecords.reduce((sum, r) => sum + r.calculatedPay, 0);
+    const totalHours = rangeRecords.reduce((sum, r) => sum + r.hours, 0);
+    const totalPay = rangeRecords.reduce((sum, r) => sum + r.dailyPay, 0);
 
     return {
       startDate,
