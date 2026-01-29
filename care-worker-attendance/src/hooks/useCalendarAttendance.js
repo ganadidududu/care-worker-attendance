@@ -21,31 +21,30 @@ export function useCalendarAttendance() {
   const { attendance, setAttendance, places } = useApp();
 
   /**
-   * 특정 날짜의 출퇴근 기록 가져오기
+   * 특정 날짜의 모든 출퇴근 기록 가져오기 (하루에 여러 곳 가능)
    * @param {string} date - YYYY-MM-DD 형식 날짜
-   * @returns {Object|null} 출퇴근 기록 또는 null
+   * @returns {Array} 출퇴근 기록 배열
    */
-  const getAttendanceByDate = (date) => {
-    const record = attendance.find((a) => a.date === date);
-    if (!record) return null;
-
-    // 장소 정보 추가
-    const place = places.find((p) => p.id === record.placeId);
-    return { ...record, place };
+  const getAttendancesByDate = (date) => {
+    const records = attendance.filter((a) => a.date === date && a.worked);
+    return records.map((record) => {
+      const place = places.find((p) => p.id === record.placeId);
+      return { ...record, place };
+    });
   };
 
   /**
-   * 특정 날짜의 출퇴근 기록 추가/수정
+   * 새로운 출퇴근 기록 추가 (하루에 여러 개 가능)
    * @param {string} date - YYYY-MM-DD 형식 날짜
-   * @param {Object} data - { worked, placeId, hours, additionalAllowance, isHoliday }
-   * @returns {Object} 생성/수정된 기록
+   * @param {Object} data - { placeId, hours, additionalAllowance, isHoliday }
+   * @returns {Object} 생성된 기록
    */
-  const setAttendanceForDate = (date, data) => {
-    const { worked, placeId, hours, additionalAllowance = 0, isHoliday = false } = data;
+  const addAttendanceForDate = (date, data) => {
+    const { placeId, hours, additionalAllowance = 0, isHoliday = false } = data;
 
     // 일급 계산
     let dailyPay = 0;
-    if (worked && placeId && hours > 0) {
+    if (placeId && hours > 0) {
       const place = places.find((p) => p.id === placeId);
       if (place) {
         const hourlyRate = place.hourlyRate || 0;
@@ -54,52 +53,68 @@ export function useCalendarAttendance() {
       }
     }
 
-    // 기존 기록 찾기
-    const existingIndex = attendance.findIndex((a) => a.date === date);
+    // 새 기록 추가
+    const newRecord = {
+      id: uuidv4(),
+      date,
+      worked: true,
+      placeId,
+      hours,
+      additionalAllowance,
+      isHoliday,
+      dailyPay,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
 
-    if (existingIndex >= 0) {
-      // 기존 기록 수정
-      const updated = {
-        ...attendance[existingIndex],
-        worked,
-        placeId,
-        hours: worked ? hours : 0,
-        additionalAllowance: worked ? additionalAllowance : 0,
-        isHoliday: worked ? isHoliday : false,
-        dailyPay,
-        updatedAt: new Date().toISOString(),
-      };
-
-      const newAttendance = [...attendance];
-      newAttendance[existingIndex] = updated;
-      setAttendance(newAttendance);
-      return updated;
-    } else {
-      // 새 기록 추가
-      const newRecord = {
-        id: uuidv4(),
-        date,
-        worked,
-        placeId,
-        hours: worked ? hours : 0,
-        additionalAllowance: worked ? additionalAllowance : 0,
-        isHoliday: worked ? isHoliday : false,
-        dailyPay,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-
-      setAttendance([...attendance, newRecord]);
-      return newRecord;
-    }
+    setAttendance([...attendance, newRecord]);
+    return newRecord;
   };
 
   /**
-   * 특정 날짜의 출퇴근 기록 삭제
-   * @param {string} date - YYYY-MM-DD 형식 날짜
+   * 기존 출퇴근 기록 수정
+   * @param {string} id - 기록 ID
+   * @param {Object} data - { placeId, hours, additionalAllowance, isHoliday }
+   * @returns {Object} 수정된 기록
    */
-  const deleteAttendanceForDate = (date) => {
-    setAttendance(attendance.filter((a) => a.date !== date));
+  const updateAttendance = (id, data) => {
+    const { placeId, hours, additionalAllowance = 0, isHoliday = false } = data;
+
+    // 일급 계산
+    let dailyPay = 0;
+    if (placeId && hours > 0) {
+      const place = places.find((p) => p.id === placeId);
+      if (place) {
+        const hourlyRate = place.hourlyRate || 0;
+        const multiplier = isHoliday ? 1.5 : 1.0;
+        dailyPay = Math.round(hourlyRate * hours * multiplier + additionalAllowance);
+      }
+    }
+
+    const newAttendance = attendance.map((record) =>
+      record.id === id
+        ? {
+            ...record,
+            placeId,
+            hours,
+            additionalAllowance,
+            isHoliday,
+            dailyPay,
+            updatedAt: new Date().toISOString(),
+          }
+        : record
+    );
+
+    setAttendance(newAttendance);
+    return newAttendance.find((r) => r.id === id);
+  };
+
+  /**
+   * 특정 출퇴근 기록 삭제 (ID로)
+   * @param {string} id - 기록 ID
+   */
+  const deleteAttendance = (id) => {
+    setAttendance(attendance.filter((a) => a.id !== id));
   };
 
   /**
@@ -161,9 +176,10 @@ export function useCalendarAttendance() {
 
   return {
     attendance,
-    getAttendanceByDate,
-    setAttendanceForDate,
-    deleteAttendanceForDate,
+    getAttendancesByDate,
+    addAttendanceForDate,
+    updateAttendance,
+    deleteAttendance,
     getMonthAttendance,
     calculateMonthTotals,
   };

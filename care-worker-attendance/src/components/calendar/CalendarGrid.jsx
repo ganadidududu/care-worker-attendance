@@ -85,14 +85,14 @@ export default function CalendarGrid({ year, month, attendanceMap, onDayClick })
       <div className="grid grid-cols-7 gap-1">
         {calendarDays.map((day, index) => {
           const dateStr = formatDate(day.date);
-          const attendance = attendanceMap[dateStr];
+          const attendances = attendanceMap[dateStr] || [];
           const isToday = dateStr === today;
 
           return (
             <CalendarDay
               key={index}
               date={day.date}
-              attendance={attendance}
+              attendances={attendances}
               isToday={isToday}
               isCurrentMonth={day.isCurrentMonth}
               onClick={onDayClick}

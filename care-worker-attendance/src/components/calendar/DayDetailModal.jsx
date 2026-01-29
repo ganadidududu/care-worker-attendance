@@ -6,20 +6,24 @@ import { usePlaces } from '../../hooks/usePlaces';
 import { useCalendarAttendance } from '../../hooks/useCalendarAttendance';
 
 /**
- * 날짜 상세/입력 모달 컴포넌트
- * 출근 여부, 장소, 근무 시간, 추가 수당, 공휴일 입력
+ * 날짜 상세 모달 - 하루에 여러 곳 출근 가능
  */
 export default function DayDetailModal({ isOpen, onClose, date }) {
   const { places } = usePlaces();
-  const { getAttendanceByDate, setAttendanceForDate, deleteAttendanceForDate } =
+  const { getAttendancesByDate, addAttendanceForDate, updateAttendance, deleteAttendance } =
     useCalendarAttendance();
 
+  const [records, setRecords] = useState([]);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+
   // 폼 상태
-  const [worked, setWorked] = useState(false);
-  const [placeId, setPlaceId] = useState('');
-  const [hours, setHours] = useState('');
-  const [additionalAllowance, setAdditionalAllowance] = useState('');
-  const [isHoliday, setIsHoliday] = useState(false);
+  const [formData, setFormData] = useState({
+    placeId: '',
+    hours: '',
+    additionalAllowance: '',
+    isHoliday: false,
+  });
 
   // 날짜 포맷 유틸리티
   const formatDate = (d) => {
@@ -32,34 +36,39 @@ export default function DayDetailModal({ isOpen, onClose, date }) {
 
   const dateStr = formatDate(date);
 
-  // 기존 데이터 로드
+  // 데이터 로드
   useEffect(() => {
     if (!date) return;
+    const existingRecords = getAttendancesByDate(dateStr);
+    setRecords(existingRecords);
 
-    const existing = getAttendanceByDate(dateStr);
-    if (existing) {
-      setWorked(existing.worked);
-      setPlaceId(existing.placeId || '');
-      setHours(existing.hours > 0 ? String(existing.hours) : '');
-      setAdditionalAllowance(
-        existing.additionalAllowance > 0 ? String(existing.additionalAllowance) : ''
-      );
-      setIsHoliday(existing.isHoliday || false);
-    } else {
-      // 초기화
-      setWorked(false);
-      setPlaceId(places.length > 0 ? places[0].id : '');
-      setHours('');
-      setAdditionalAllowance('');
-      setIsHoliday(false);
+    // 기본값 설정
+    if (places.length > 0) {
+      setFormData({
+        placeId: places[0].id,
+        hours: '',
+        additionalAllowance: '',
+        isHoliday: false,
+      });
     }
   }, [date, dateStr]);
 
+  // 폼 초기화
+  const resetForm = () => {
+    setFormData({
+      placeId: places.length > 0 ? places[0].id : '',
+      hours: '',
+      additionalAllowance: '',
+      isHoliday: false,
+    });
+    setEditingId(null);
+    setShowAddForm(false);
+  };
+
   // 일급 미리보기 계산
-  const calculatePreview = () => {
-    if (!worked || !placeId || !hours || Number(hours) <= 0) {
-      return 0;
-    }
+  const calculatePreview = (data) => {
+    const { placeId, hours, additionalAllowance, isHoliday } = data;
+    if (!placeId || !hours || Number(hours) <= 0) return 0;
 
     const place = places.find((p) => p.id === placeId);
     if (!place) return 0;
@@ -71,37 +80,75 @@ export default function DayDetailModal({ isOpen, onClose, date }) {
     return Math.round(hourlyRate * Number(hours) * multiplier + allowance);
   };
 
-  const previewPay = calculatePreview();
-
-  // 저장 핸들러
-  const handleSave = () => {
-    if (worked && (!placeId || !hours || Number(hours) <= 0)) {
-      alert('출근 시 장소와 근무 시간을 입력해주세요.');
+  // 추가 핸들러
+  const handleAdd = () => {
+    if (!formData.placeId || !formData.hours || Number(formData.hours) <= 0) {
+      alert('장소와 근무 시간을 입력해주세요.');
       return;
     }
 
-    setAttendanceForDate(dateStr, {
-      worked,
-      placeId: worked ? placeId : null,
-      hours: worked ? Number(hours) : 0,
-      additionalAllowance: worked ? Number(additionalAllowance) || 0 : 0,
-      isHoliday: worked ? isHoliday : false,
+    addAttendanceForDate(dateStr, {
+      placeId: formData.placeId,
+      hours: Number(formData.hours),
+      additionalAllowance: Number(formData.additionalAllowance) || 0,
+      isHoliday: formData.isHoliday,
     });
 
-    onClose();
+    // 목록 새로고침
+    const updatedRecords = getAttendancesByDate(dateStr);
+    setRecords(updatedRecords);
+    resetForm();
+  };
+
+  // 수정 시작
+  const handleEditStart = (record) => {
+    setEditingId(record.id);
+    setFormData({
+      placeId: record.placeId,
+      hours: String(record.hours),
+      additionalAllowance: String(record.additionalAllowance || ''),
+      isHoliday: record.isHoliday,
+    });
+    setShowAddForm(true);
+  };
+
+  // 수정 저장
+  const handleUpdate = () => {
+    if (!formData.placeId || !formData.hours || Number(formData.hours) <= 0) {
+      alert('장소와 근무 시간을 입력해주세요.');
+      return;
+    }
+
+    updateAttendance(editingId, {
+      placeId: formData.placeId,
+      hours: Number(formData.hours),
+      additionalAllowance: Number(formData.additionalAllowance) || 0,
+      isHoliday: formData.isHoliday,
+    });
+
+    // 목록 새로고침
+    const updatedRecords = getAttendancesByDate(dateStr);
+    setRecords(updatedRecords);
+    resetForm();
   };
 
   // 삭제 핸들러
-  const handleDelete = () => {
-    if (confirm('이 날짜의 출퇴근 기록을 삭제하시겠습니까?')) {
-      deleteAttendanceForDate(dateStr);
-      onClose();
+  const handleDelete = (id) => {
+    if (confirm('이 출근 기록을 삭제하시겠습니까?')) {
+      deleteAttendance(id);
+      const updatedRecords = getAttendancesByDate(dateStr);
+      setRecords(updatedRecords);
+      if (editingId === id) {
+        resetForm();
+      }
     }
   };
 
-  if (!date) return null;
+  // 총합 계산
+  const totalHours = records.reduce((sum, r) => sum + r.hours, 0);
+  const totalPay = records.reduce((sum, r) => sum + r.dailyPay, 0);
 
-  const existing = getAttendanceByDate(dateStr);
+  if (!date) return null;
 
   return (
     <Modal
@@ -115,23 +162,90 @@ export default function DayDetailModal({ isOpen, onClose, date }) {
       })}
     >
       <div className="space-y-4">
-        {/* 출근 여부 체크박스 */}
-        <div className="flex items-center gap-3">
-          <input
-            type="checkbox"
-            id="worked"
-            checked={worked}
-            onChange={(e) => setWorked(e.target.checked)}
-            className="w-6 h-6 rounded"
-          />
-          <label htmlFor="worked" className="text-xl font-semibold cursor-pointer">
-            출근했음
-          </label>
-        </div>
+        {/* 기존 출근 기록 리스트 */}
+        {records.length > 0 && (
+          <div className="space-y-3">
+            <h3 className="text-xl font-bold">출근 기록 ({records.length}곳)</h3>
+            {records.map((record) => (
+              <div
+                key={record.id}
+                className={`p-4 rounded-xl border-2 ${
+                  record.isHoliday ? 'bg-red-50 border-red-300' : 'bg-green-50 border-green-300'
+                }`}
+              >
+                <div className="flex justify-between items-start mb-2">
+                  <div className="flex-1">
+                    <h4 className="text-lg font-bold">
+                      {record.place?.name || '(삭제된 장소)'}
+                      {record.isHoliday && ' 🎉'}
+                    </h4>
+                    <p className="text-base text-gray-700">
+                      {record.hours}시간
+                      {record.additionalAllowance > 0 &&
+                        ` + 수당 ${record.additionalAllowance.toLocaleString()}원`}
+                    </p>
+                    <p className="text-xl font-bold text-green-600 mt-1">
+                      {record.dailyPay.toLocaleString()}원
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleEditStart(record)}
+                      className="px-3 py-2 bg-blue-500 text-white rounded-lg text-sm font-semibold"
+                    >
+                      수정
+                    </button>
+                    <button
+                      onClick={() => handleDelete(record.id)}
+                      className="px-3 py-2 bg-red-500 text-white rounded-lg text-sm font-semibold"
+                    >
+                      삭제
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
 
-        {/* 출근했을 때만 표시 */}
-        {worked && (
-          <>
+            {/* 일일 총합 */}
+            <div className="p-4 bg-primary-50 rounded-xl border-2 border-primary-300">
+              <div className="flex justify-between items-center">
+                <span className="text-lg font-semibold">오늘 총합:</span>
+                <div className="text-right">
+                  <p className="text-xl font-bold text-primary-600">{totalHours}시간</p>
+                  <p className="text-2xl font-bold text-green-600">
+                    {totalPay.toLocaleString()}원
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 빈 상태 */}
+        {records.length === 0 && !showAddForm && (
+          <div className="text-center py-8">
+            <p className="text-lg text-gray-600 mb-4">아직 출근 기록이 없습니다</p>
+          </div>
+        )}
+
+        {/* 추가 버튼 */}
+        {!showAddForm && (
+          <Button
+            variant="primary"
+            onClick={() => setShowAddForm(true)}
+            fullWidth
+          >
+            + 출근 추가
+          </Button>
+        )}
+
+        {/* 추가/수정 폼 */}
+        {showAddForm && (
+          <div className="p-4 bg-blue-50 rounded-xl border-2 border-blue-300 space-y-4">
+            <h3 className="text-xl font-bold">
+              {editingId ? '출근 기록 수정' : '새 출근 추가'}
+            </h3>
+
             {/* 장소 선택 */}
             <div>
               <label className="block text-lg font-semibold mb-2">장소</label>
@@ -141,8 +255,8 @@ export default function DayDetailModal({ isOpen, onClose, date }) {
                 </p>
               ) : (
                 <select
-                  value={placeId}
-                  onChange={(e) => setPlaceId(e.target.value)}
+                  value={formData.placeId}
+                  onChange={(e) => setFormData({ ...formData, placeId: e.target.value })}
                   className="w-full min-h-[56px] px-4 text-lg border-2 border-gray-300 rounded-xl focus:outline-none focus:border-primary-500"
                 >
                   {places.map((place) => (
@@ -160,8 +274,8 @@ export default function DayDetailModal({ isOpen, onClose, date }) {
               <Input
                 type="number"
                 inputMode="decimal"
-                value={hours}
-                onChange={(e) => setHours(e.target.value)}
+                value={formData.hours}
+                onChange={(e) => setFormData({ ...formData, hours: e.target.value })}
                 placeholder="8"
                 min="0"
                 step="0.5"
@@ -171,14 +285,14 @@ export default function DayDetailModal({ isOpen, onClose, date }) {
 
             {/* 추가 수당 */}
             <div>
-              <label className="block text-lg font-semibold mb-2">
-                추가 수당 (선택)
-              </label>
+              <label className="block text-lg font-semibold mb-2">추가 수당 (선택)</label>
               <Input
                 type="number"
                 inputMode="numeric"
-                value={additionalAllowance}
-                onChange={(e) => setAdditionalAllowance(e.target.value)}
+                value={formData.additionalAllowance}
+                onChange={(e) =>
+                  setFormData({ ...formData, additionalAllowance: e.target.value })
+                }
                 placeholder="0"
                 min="0"
               />
@@ -190,8 +304,8 @@ export default function DayDetailModal({ isOpen, onClose, date }) {
               <input
                 type="checkbox"
                 id="isHoliday"
-                checked={isHoliday}
-                onChange={(e) => setIsHoliday(e.target.checked)}
+                checked={formData.isHoliday}
+                onChange={(e) => setFormData({ ...formData, isHoliday: e.target.checked })}
                 className="w-6 h-6 rounded"
               />
               <label htmlFor="isHoliday" className="text-lg font-semibold cursor-pointer">
@@ -199,33 +313,39 @@ export default function DayDetailModal({ isOpen, onClose, date }) {
               </label>
             </div>
 
-            {/* 일급 미리보기 */}
-            {previewPay > 0 && (
+            {/* 급여 미리보기 */}
+            {calculatePreview(formData) > 0 && (
               <div className="p-4 bg-primary-50 rounded-xl">
-                <p className="text-lg font-semibold mb-2">예상 일급</p>
+                <p className="text-lg font-semibold mb-2">예상 급여</p>
                 <p className="text-3xl font-bold text-primary-600">
-                  {previewPay.toLocaleString()}원
+                  {calculatePreview(formData).toLocaleString()}원
                 </p>
-                {isHoliday && (
+                {formData.isHoliday && (
                   <p className="text-sm text-red-600 mt-1">공휴일 가산 적용됨</p>
                 )}
               </div>
             )}
-          </>
+
+            {/* 폼 버튼 */}
+            <div className="flex gap-3">
+              <Button variant="secondary" onClick={resetForm} fullWidth>
+                취소
+              </Button>
+              <Button
+                variant="primary"
+                onClick={editingId ? handleUpdate : handleAdd}
+                fullWidth
+              >
+                {editingId ? '수정' : '추가'}
+              </Button>
+            </div>
+          </div>
         )}
 
-        {/* 버튼 영역 */}
-        <div className="flex gap-3 mt-6">
+        {/* 닫기 버튼 */}
+        <div className="pt-4 border-t">
           <Button variant="secondary" onClick={onClose} fullWidth>
-            취소
-          </Button>
-          {existing && (
-            <Button variant="danger" onClick={handleDelete} fullWidth>
-              삭제
-            </Button>
-          )}
-          <Button variant="primary" onClick={handleSave} fullWidth>
-            저장
+            닫기
           </Button>
         </div>
       </div>

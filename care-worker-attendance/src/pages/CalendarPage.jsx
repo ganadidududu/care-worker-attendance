@@ -49,12 +49,17 @@ export default function CalendarPage() {
     setSelectedDate(null);
   };
 
-  // 현재 월의 출퇴근 데이터를 맵으로 변환 (빠른 조회)
+  // 현재 월의 출퇴근 데이터를 맵으로 변환 (날짜별 배열)
   const attendanceMap = useMemo(() => {
     const map = {};
-    attendance.forEach((record) => {
-      map[record.date] = record;
-    });
+    attendance
+      .filter((record) => record.worked)
+      .forEach((record) => {
+        if (!map[record.date]) {
+          map[record.date] = [];
+        }
+        map[record.date].push(record);
+      });
     return map;
   }, [attendance]);
 

@@ -11,7 +11,7 @@ import Button from '../components/common/Button';
  */
 export default function HomePage() {
   const { places } = usePlaces();
-  const { getAttendanceByDate } = useCalendarAttendance();
+  const { getAttendancesByDate } = useCalendarAttendance();
   const [currentTime, setCurrentTime] = useState(new Date());
 
   // 오늘 날짜 (YYYY-MM-DD)
@@ -23,7 +23,11 @@ export default function HomePage() {
   };
 
   const todayStr = formatDate(new Date());
-  const todayAttendance = getAttendanceByDate(todayStr);
+  const todayAttendances = getAttendancesByDate(todayStr);
+
+  // 오늘 총합 계산
+  const todayTotalHours = todayAttendances.reduce((sum, a) => sum + a.hours, 0);
+  const todayTotalPay = todayAttendances.reduce((sum, a) => sum + a.dailyPay, 0);
 
   // 시간 업데이트 (1초마다)
   useEffect(() => {
@@ -62,33 +66,47 @@ export default function HomePage() {
       {/* 오늘 출근 정보 */}
       <Card className="mb-6 bg-blue-50">
         <h2 className="text-2xl font-bold mb-4">오늘 근무</h2>
-        {!todayAttendance || !todayAttendance.worked ? (
+        {todayAttendances.length === 0 ? (
           <p className="text-lg text-gray-600">오늘은 출근 기록이 없습니다</p>
         ) : (
           <div className="space-y-3">
-            <div className="flex justify-between items-center">
-              <span className="text-lg">장소:</span>
-              <span className="text-xl font-bold text-gray-900">
-                {todayAttendance.place?.name || '(삭제된 장소)'}
-              </span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-lg">근무 시간:</span>
-              <span className="text-3xl font-bold text-primary-600">
-                {todayAttendance.hours}시간
-              </span>
-            </div>
-            {todayAttendance.isHoliday && (
-              <div className="flex justify-between items-center">
-                <span className="text-lg text-red-600">공휴일 가산:</span>
-                <span className="text-xl font-bold text-red-600">1.5배</span>
+            {/* 방문 장소 리스트 */}
+            <div>
+              <span className="text-lg font-semibold">방문 장소:</span>
+              <div className="mt-2 space-y-2">
+                {todayAttendances.map((attendance, index) => (
+                  <div key={index} className="flex justify-between items-center p-3 bg-white rounded-lg">
+                    <div>
+                      <span className="text-base font-bold">
+                        {attendance.place?.name || '(삭제된 장소)'}
+                        {attendance.isHoliday && ' 🎉'}
+                      </span>
+                      <span className="text-sm text-gray-600 ml-2">
+                        {attendance.hours}시간
+                      </span>
+                    </div>
+                    <span className="text-lg font-bold text-green-600">
+                      {attendance.dailyPay.toLocaleString()}원
+                    </span>
+                  </div>
+                ))}
               </div>
-            )}
-            <div className="flex justify-between items-center pt-3 border-t">
-              <span className="text-xl font-bold">일급:</span>
-              <span className="text-3xl font-bold text-green-600">
-                {todayAttendance.dailyPay.toLocaleString()}원
-              </span>
+            </div>
+
+            {/* 오늘 총합 */}
+            <div className="flex justify-between items-center pt-3 border-t-2 border-blue-300">
+              <div>
+                <span className="text-lg">총 근무:</span>
+                <span className="text-2xl font-bold text-primary-600 ml-2">
+                  {todayTotalHours}시간
+                </span>
+              </div>
+              <div className="text-right">
+                <span className="text-lg">총 급여:</span>
+                <p className="text-3xl font-bold text-green-600">
+                  {todayTotalPay.toLocaleString()}원
+                </p>
+              </div>
             </div>
           </div>
         )}
